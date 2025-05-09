@@ -3,34 +3,23 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
-// 🐨 delete all users here:
-// 💰 await prisma.user.deleteMany()
-// 🦉 Thanks to the relationships we have configured in our schema, this will
-// delete all the notes and images associated with the user as well.
+await prisma.user.deleteMany()
 
-// 🐨 create a new user with the following properties:
-// email: 'kody@kcd.dev',
-// username: 'kody',
-// name: 'Kody',
-// call the user variable you get back "kody"
-
-// 💣 we don't need this anymore:
-const firstNote = await prisma.note.findFirst()
-
-if (!firstNote) {
-	throw new Error('You need to have a note in the database first')
-}
-
-// 🐨 instead of finding the first note like we do above, let's swap "update"
-// for "create" and add these properties:
-// id: 'd27a197e',
-// title: 'Basic Koala Facts',
-// content:
-// 	'Koalas are found in the eucalyptus forests of eastern Australia. They have grey fur with a cream-coloured chest, and strong, clawed feet, perfect for living in the branches of trees!',
-// ownerId: kody.id,
-await prisma.note.update({
-	where: { id: firstNote.id },
+const kody = await prisma.user.create({
 	data: {
+		email: 'kody@kcd.dev',
+		username: 'kody',
+		name: 'Kody',
+	},
+})
+
+await prisma.note.create({
+	data: {
+		id: 'd27a197e',
+		title: 'Basic Koala Facts',
+		content:
+			'Koalas are found in the eucalyptus forests of eastern Australia. They have grey fur with a cream-coloured chest, and strong, clawed feet, perfect for living in the branches of trees!',
+		ownerId: kody.id,
 		images: {
 			create: [
 				{
