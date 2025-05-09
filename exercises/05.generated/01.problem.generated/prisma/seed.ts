@@ -1,19 +1,44 @@
 import fs from 'node:fs'
-// 💰 import { faker } from '@faker-js/faker'
+import { faker } from '@faker-js/faker'
 import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
 await prisma.user.deleteMany()
 
-// 🐨 create a new fake user with completely randomly generated data.
-// They should have two notes. Don't worry about images just yet.
-// 💰 You'll use these helpers:
-// - faker.internet.email
-// - faker.internet.userName
-// - faker.person.fullName
-// - faker.lorem.sentence
-// - faker.lorem.paragraphs
+await prisma.user.create({
+	data: {
+		email: faker.internet.email(),
+		username: faker.internet.userName(),
+		name: faker.person.fullName(),
+		notes: {
+			create: [
+				{
+					title: faker.lorem.sentence(),
+					content: faker.lorem.paragraphs(),
+					images: {
+						create: [
+							{
+								altText: faker.lorem.sentence(),
+								contentType: 'image/png',
+								blob: await fs.promises.readFile(
+									`./tests/fixtures/images/notes/${faker.number.int({ min: 1, max: 1 })}.png`,
+								),
+							},
+							{
+								altText: faker.lorem.sentence(),
+								contentType: 'image/png',
+								blob: await fs.promises.readFile(
+									`./tests/fixtures/images/notes/${faker.number.int({ min: 1, max: 1 })}.png`,
+								),
+							},
+						],
+					},
+				},
+			],
+		},
+	},
+})
 
 await prisma.user.create({
 	data: {
