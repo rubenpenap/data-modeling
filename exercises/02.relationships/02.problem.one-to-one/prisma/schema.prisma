@@ -19,9 +19,8 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  // 🐨 once you've made the UserImage model, add an optional image property here
-
   notes Note[]
+  image UserImage?
 }
 
 model Note {
@@ -35,26 +34,31 @@ model Note {
   owner   User   @relation(fields: [ownerId], references: [id], onDelete: Cascade, onUpdate: Cascade)
   ownerId String
 
-  // 🐨 once you've made the NoteImage model, add an images property that's an
-  // array of NoteImage models
+  images NoteImage[]
 }
 
-// 🐨 add the UserImage model here. It should have the following properties
-// - id: similar to the other id properties we have so far
-// - altText: an optional string
-// - contentType: a required string
-// - blob: a Bytes type
-// - createdAt: just like the others we have already
-// - updatedAt: just like the others we have already
-// - user: a user with a relationship attribute
-// - userId: a string with the @unique attribute establishing the one-to-one relationship
+model UserImage {
+  id          String  @id @default(cuid())
+  altText     String?
+  contentType String
+  blob        Bytes
 
-// 🐨 add the NoteImage model here. It should have the following properties
-// - id: similar to the other id properties we have so far
-// - altText: an optional string
-// - contentType: a required string
-// - blob: a Bytes type
-// - createdAt: just like the others we have already
-// - updatedAt: just like the others we have already
-// - note: a note with a relationship attribute
-// - noteId: a string
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId String @unique
+}
+
+model NoteImage {
+  id          String  @id @default(cuid())
+  altText     String?
+  contentType String
+  blob        Bytes
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  note   Note   @relation(fields: [noteId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  noteId String
+}
