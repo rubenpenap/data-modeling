@@ -1,37 +1,23 @@
 import { json, type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, NavLink, Outlet, useLoaderData } from '@remix-run/react'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
-import { db } from '#app/utils/db.server.ts'
+import { prisma } from '#app/utils/db.server.ts'
 import { cn, getUserImgSrc, invariantResponse } from '#app/utils/misc.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	// 🐨 swap this for a prisma query that selects only the data you need and
-	// selects the necessary properties for the user's image and notes as well.
-	const owner = db.user.findFirst({
-		where: {
-			username: {
-				equals: params.username,
-			},
+	const owner = await prisma.user.findUnique({
+		select: {
+			name: true,
+			username: true,
+			image: { select: { id: true } },
+			notes: { select: { id: true, title: true } },
 		},
+		where: { username: params.username },
 	})
 
 	invariantResponse(owner, 'Owner not found', { status: 404 })
 
-	// 💣 you shouldn't need this anymore. We got the notes from the prisma query above.
-	const notes = db.note
-		.findMany({
-			where: {
-				owner: {
-					username: {
-						equals: params.username,
-					},
-				},
-			},
-		})
-		.map(({ id, title }) => ({ id, title }))
-
-	// 🐨 just return the owner now.
-	return json({ owner, notes })
+	return json({ owner })
 }
 
 export default function NotesRoute() {
@@ -58,8 +44,7 @@ export default function NotesRoute() {
 							</h1>
 						</Link>
 						<ul className="overflow-y-auto overflow-x-hidden pb-12">
-							{/* 🐨 this will need to be updated since the notes are on data.owner.notes now */}
-							{data.notes.map(note => (
+							{data.owner.notes.map(note => (
 								<li key={note.id} className="p-1 pr-0">
 									<NavLink
 										to={note.id}
