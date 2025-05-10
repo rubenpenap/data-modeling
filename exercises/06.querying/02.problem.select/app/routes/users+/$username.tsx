@@ -3,34 +3,25 @@ import { Link, useLoaderData, type MetaFunction } from '@remix-run/react'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { Spacer } from '#app/components/spacer.tsx'
 import { Button } from '#app/components/ui/button.tsx'
-// 🐨 swap "db" for "prisma"
-import { db } from '#app/utils/db.server.ts'
+import { prisma } from '#app/utils/db.server.ts'
 import { getUserImgSrc, invariantResponse } from '#app/utils/misc.tsx'
 
 export async function loader({ params }: LoaderFunctionArgs) {
-	// 🐨 delete this query for one using prisma
-	// 🐨 make sure to use `select` to only get the fields we care about.
-	const user = db.user.findFirst({
+	const user = await prisma.user.findUnique({
+		select: {
+			name: true,
+			username: true,
+			createdAt: true,
+			image: { select: { id: true } },
+		},
 		where: {
-			username: {
-				equals: params.username,
-			},
+			username: params.username,
 		},
 	})
 
 	invariantResponse(user, 'User not found', { status: 404 })
 
-	// 🐨 you can just return the user here since we're selecting just the bits
-	// that matter in the query above.
-	return json({
-		user: {
-			name: user.name,
-			username: user.username,
-			image: user.image ? { id: user.image.id } : undefined,
-		},
-		// 🦉 we still want to keep this
-		userJoinedDisplay: new Date(user.createdAt).toLocaleDateString(),
-	})
+	return json({ user, userJoinedDisplay: user.createdAt.toLocaleDateString() })
 }
 
 export default function ProfileRoute() {
