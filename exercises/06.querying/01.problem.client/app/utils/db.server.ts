@@ -8,27 +8,42 @@ import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import { factory, manyOf, nullable, oneOf, primaryKey } from '@mswjs/data'
+import { PrismaClient } from '@prisma/client'
+import chalk from 'chalk'
 import { singleton } from './singleton.server.ts'
 
-// 🐨 add the prisma client here. The export should be called "prisma"
-// You'll want to use the singleton helper as described in the background
-// information for this exercise (similar to how it's used in the "db" below).
-//   🐨 create the prisma client.
-//   🐨 configure it to emit an event for the query log and use 'stdout' for other log levels
-//     📜 (https://www.prisma.io/docs/concepts/components/prisma-client/working-with-prismaclient/logging)
-//   🐨 listen to the 'query' event
-//   🐨 log out the event.duration and event.query
-//   💯 If you've got extra time, add a logThreshold that will prevent the log
-//     from appearing if the query is fast enough (like 1ms)
-//   💯 If you have even more extra time, you can colorize the output to make
-//     extra-slow queries more obvious. We have the "chalk" package installed
-//     already.
+const prisma = singleton('prisma', () => {
+	const logThreshold = 0
 
-// 🦉 If you want to test things out before moving on, go ahead and uncomment this:
-// console.log(await prisma.user.findMany())
-// Then run the app and you should see the query log in the console.
+	const client = new PrismaClient({
+		log: [
+			{ level: 'query', emit: 'event' },
+			{ level: 'error', emit: 'stdout' },
+			{ level: 'info', emit: 'stdout' },
+			{ level: 'warn', emit: 'stdout' },
+		],
+	})
+	client.$on('query', async e => {
+		if (e.duration < logThreshold) return
+		const color =
+			e.duration < logThreshold * 1.1
+				? 'green'
+				: e.duration < logThreshold * 1.2
+					? 'blue'
+					: e.duration < logThreshold * 1.3
+						? 'yellow'
+						: e.duration < logThreshold * 1.4
+							? 'redBright'
+							: 'red'
+		const dur = chalk[color](`${e.duration}ms`)
+		console.info(`prisma:query - ${dur} - ${e.query}`)
+	})
+	client.$connect()
+	return client
+})
 
-// 🦉 We'll keep this stuff below around until we've finished migrating everything over to prisma
+export { prisma }
+
 const getId = () => crypto.randomBytes(16).toString('hex').slice(0, 8)
 
 export const db = singleton('db', () => {
