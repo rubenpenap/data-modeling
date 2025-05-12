@@ -1,12 +1,19 @@
 import { json, redirect, type LoaderFunctionArgs } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
+import { z } from 'zod'
 import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
+import { ErrorList } from '#app/components/forms.tsx'
 import { SearchBar } from '#app/components/search-bar.tsx'
 import { prisma } from '#app/utils/db.server.ts'
 import { cn, getUserImgSrc, useDelayedIsPending } from '#app/utils/misc.tsx'
 
-// 🐨 add a new schema here for the search results. Each entry should have an
-// id, username, and (nullable) name
+const UserSearchResultSchema = z.object({
+	id: z.string(),
+	username: z.string(),
+	name: z.string().nullable(),
+})
+
+const UserSearchResultsSchema = z.array(UserSearchResultSchema)
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const searchTerm = new URL(request.url).searchParams.get('search')
@@ -15,8 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	const like = `%${searchTerm ?? ''}%`
-	// 🐨 rename this to "rawUsers"
-	const users = await prisma.$queryRaw`
+	const rawUsers = await prisma.$queryRaw`
 		SELECT id, username, name
 		FROM User
 		WHERE username LIKE ${like}
@@ -24,11 +30,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		LIMIT 50
 	`
 
-	// 🐨 use your new schema to safely parse the rawUsers.
-	//   If there's an error, then return json with the error (result.error.message)
-	//   If there is not an error, then return json with the users
-
-	return json({ status: 'idle', users } as const)
+	const result = UserSearchResultsSchema.safeParse(rawUsers)
+	if (!result.success) {
+		return json({ status: 'error', error: result.error.message } as const, {
+			status: 400,
+		})
+	}
+	return json({ status: 'idle', users: result.data } as const)
 }
 
 export default function UsersRoute() {
@@ -38,10 +46,9 @@ export default function UsersRoute() {
 		formAction: '/users',
 	})
 
-	// 💰 uncomment this to log the full error to the console:
-	// if (data.status === 'error') {
-	// 	console.error(data.error)
-	// }
+	if (data.status === 'error') {
+		console.error(data.error)
+	}
 
 	return (
 		<div className="container mb-48 mt-36 flex flex-col items-center justify-center gap-6">
@@ -51,7 +58,6 @@ export default function UsersRoute() {
 			</div>
 			<main>
 				{data.status === 'idle' ? (
-					// @ts-expect-error 💣 remove this now
 					data.users.length ? (
 						<ul
 							className={cn(
@@ -59,7 +65,6 @@ export default function UsersRoute() {
 								{ 'opacity-50': isPending },
 							)}
 						>
-							{/* @ts-expect-error 💣 remove this now */}
 							{data.users.map(user => (
 								<li key={user.id}>
 									<Link
@@ -68,7 +73,7 @@ export default function UsersRoute() {
 									>
 										<img
 											alt={user.name ?? user.username}
-											// add a ts-expect-error here. We'll fix this one next.
+											// @ts-expect-error 🦺 we'll fix this next
 											src={getUserImgSrc(user.image?.id)}
 											className="h-16 w-16 rounded-full"
 										/>
@@ -87,11 +92,9 @@ export default function UsersRoute() {
 					) : (
 						<p>No users found</p>
 					)
-				) : // 💰 add "import { ErrorList } from '#app/components/forms.tsx'" to the top and uncomment this to display the error:
-				// data.status === 'error' ? (
-				// <ErrorList errors={['There was an error parsing the results']} />
-				// ) :
-				null}
+				) : data.status === 'error' ? (
+					<ErrorList errors={['There was an error parsing the results']} />
+				) : null}
 			</main>
 		</div>
 	)
