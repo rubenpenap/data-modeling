@@ -7,8 +7,7 @@ import {
 	type FieldConfig,
 } from '@conform-to/react'
 import { getFieldsetConstraint, parse } from '@conform-to/zod'
-// 💰 You're going to need this:
-// import { createId as cuid } from '@paralleldrive/cuid2'
+import { createId as cuid } from '@paralleldrive/cuid2'
 import {
 	unstable_createMemoryUploadHandler as createMemoryUploadHandler,
 	json,
@@ -144,21 +143,35 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	if (!submission.value) {
 		return json({ status: 'error', submission } as const, { status: 400 })
 	}
-	// 🐨 uncomment this:
-	// const { title, content, imageUpdates = [], newImages = [] } = submission.value
+	const { title, content, imageUpdates = [], newImages = [] } = submission.value
 
-	// 🐨 Update the note's title and content
-	// 🐨 use deleteMany on the noteImage to delete all images where:
-	// - their noteId is the params.noteId
-	// - their id is not in the imageUpdates array (💰 imageUpdates.map(i => i.id))
-	//   📜 https://www.prisma.io/docs/reference/api-reference/prisma-client-reference#notin
-	//   📜 https://www.prisma.io/docs/reference/api-reference/prisma-client-reference#deletemany
+	await prisma.note.update({
+		select: { id: true },
+		where: { id: params.noteId },
+		data: { title, content },
+	})
 
-	// 🐨 iterate all the imageUpdates and update the image.
-	// 💯 If there's a blob, then set the id to a new cuid() (💰 check the imports above)
-	// so we handle caching properly.
+	await prisma.noteImage.deleteMany({
+		where: {
+			id: { notIn: imageUpdates.map(i => i.id) },
+			noteId: params.noteId,
+		},
+	})
 
-	// 🐨 iterate over the newImages and create a new noteImage for each one.
+	for (const updates of imageUpdates) {
+		await prisma.noteImage.update({
+			select: { id: true },
+			where: { id: updates.id },
+			data: { ...updates, id: updates.blob ? cuid() : updates.id },
+		})
+	}
+
+	for (const newImage of newImages) {
+		await prisma.noteImage.create({
+			select: { id: true },
+			data: { ...newImage, noteId: params.noteId },
+		})
+	}
 
 	return redirect(`/users/${params.username}/notes/${params.noteId}`)
 }
