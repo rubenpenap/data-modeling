@@ -152,34 +152,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		data: {
 			title,
 			content,
-			// 🐨 add images here and inline all three of the other calls here:
-			// deleteMany: https://www.prisma.io/docs/reference/api-reference/prisma-client-reference#deletemany-1
-			// updateMany: https://www.prisma.io/docs/reference/api-reference/prisma-client-reference#updatemany
-			// create: https://www.prisma.io/docs/reference/api-reference/prisma-client-reference#create
+			images: {
+				deleteMany: { id: { notIn: imageUpdates.map(i => i.id) } },
+				updateMany: imageUpdates.map(updates => ({
+					where: { id: updates.id },
+					data: { ...updates, id: updates.blob ? cuid() : updates.id },
+				})),
+				create: newImages,
+			},
 		},
 	})
-
-	await prisma.noteImage.deleteMany({
-		where: {
-			id: { notIn: imageUpdates.map(i => i.id) },
-			noteId: params.noteId,
-		},
-	})
-
-	for (const updates of imageUpdates) {
-		await prisma.noteImage.update({
-			select: { id: true },
-			where: { id: updates.id },
-			data: { ...updates, id: updates.blob ? cuid() : updates.id },
-		})
-	}
-
-	for (const newImage of newImages) {
-		await prisma.noteImage.create({
-			select: { id: true },
-			data: { ...newImage, noteId: params.noteId },
-		})
-	}
 
 	return redirect(`/users/${params.username}/notes/${params.noteId}`)
 }
