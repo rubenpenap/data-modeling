@@ -10,7 +10,7 @@ import { GeneralErrorBoundary } from '#app/components/error-boundary.tsx'
 import { floatingToolbarClassName } from '#app/components/floating-toolbar.tsx'
 import { Button } from '#app/components/ui/button.tsx'
 import { validateCSRF } from '#app/utils/csrf.server.ts'
-import { prisma, db } from '#app/utils/db.server.ts'
+import { prisma } from '#app/utils/db.server.ts'
 import { getNoteImgSrc, invariantResponse } from '#app/utils/misc.tsx'
 import { type loader as notesLoader } from './notes.tsx'
 
@@ -40,8 +40,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	invariantResponse(intent === 'delete', 'Invalid intent')
 
-	// 🐨 swap this out for a prisma delete call
-	db.note.delete({ where: { id: { equals: params.noteId } } })
+	prisma.note.delete({ where: { id: params.noteId } })
 	return redirect(`/users/${params.username}/notes`)
 }
 
