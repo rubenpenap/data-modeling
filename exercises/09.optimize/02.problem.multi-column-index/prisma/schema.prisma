@@ -36,11 +36,10 @@ model Note {
 
   images NoteImage[]
 
-  // 🐨 add an index for the ownerId and updatedAt here and add a comment.
-  // 🦉 most indexes should be accompanied by a comment explaining why they exist.
-
   // non-unique foreign key
   @@index([ownerId])
+  // This helps our order by in the user search a LOT
+  @@index([ownerId, updatedAt])
 }
 
 model NoteImage {
