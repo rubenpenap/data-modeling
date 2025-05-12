@@ -11,7 +11,7 @@ const UserSearchResultSchema = z.object({
 	id: z.string(),
 	username: z.string(),
 	name: z.string().nullable(),
-	// 🐨 add a nullable imageId string field here
+	imageId: z.string().nullable(),
 })
 
 const UserSearchResultsSchema = z.array(UserSearchResultSchema)
@@ -24,18 +24,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	const like = `%${searchTerm ?? ''}%`
 	const rawUsers = await prisma.$queryRaw`
-		-- 🦉 Once I add a join, I like to make sure to reference all tables clear,
-		-- so instead of "id" I put "User.id" or "UserImage.id"
-
-		-- 🐨 add UserImage.id to this select (💰 I'd alias it with "AS imageId")
-		SELECT id, username, name
-		FROM User
-		-- add LEFT JOIN the UserImage table here on the User.id and UserImage.userId
-		WHERE username LIKE ${like}
-		OR name LIKE ${like}
+		SELECT User.id, User.username, User.name, UserImage.id AS imageId
+    FROM User
+    LEFT JOIN UserImage ON UserImage.userId = User.id
+		WHERE User.username LIKE ${like}
+		OR User.name LIKE ${like}
 		LIMIT 50
 	`
-	// 💰 Don't forget to fix the <img /> below 👇
 
 	const result = UserSearchResultsSchema.safeParse(rawUsers)
 	if (!result.success) {
@@ -80,9 +75,7 @@ export default function UsersRoute() {
 									>
 										<img
 											alt={user.name ?? user.username}
-											// 🐨 change from user.image?.id to user.imageId
-											// @ts-expect-error 💣 remove this ts-expect-error
-											src={getUserImgSrc(user.image?.id)}
+											src={getUserImgSrc(user.imageId)}
 											className="h-16 w-16 rounded-full"
 										/>
 										{user.name ? (
